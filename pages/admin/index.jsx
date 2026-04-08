@@ -55,26 +55,25 @@ function FixtureModal({ fixture, umpires, onClose, onSaved }) {
     }
 
     // Save umpire assignments
-    await upsertAssignment(fixtureId, 'umpire1', umpire1Id);
-    await upsertAssignment(fixtureId, 'umpire2', umpire2Id);
+    const r1 = await upsertAssignment(fixtureId, 'umpire1', umpire1Id);
+    const r2 = await upsertAssignment(fixtureId, 'umpire2', umpire2Id);
+    if (r1) { setError(r1); setSaving(false); return; }
+    if (r2) { setError(r2); setSaving(false); return; }
 
     setSaving(false);
     onSaved();
   }
 
   async function upsertAssignment(fixtureId, role, umpireId) {
-    if (!umpireId) {
-      // Remove assignment if cleared
-      await supabase
-        .from('assignments')
-        .delete()
-        .eq('fixture_id', fixtureId)
-        .eq('role', role);
-      return;
+    const { error: delErr } = await supabase.from('assignments').delete()
+      .eq('fixture_id', fixtureId).eq('role', role);
+    if (delErr) return `Delete ${role} failed: ${delErr.message}`;
+    if (umpireId) {
+      const { error: insErr } = await supabase.from('assignments')
+        .insert({ fixture_id: fixtureId, role, umpire_id: umpireId });
+      if (insErr) return `Assign ${role} failed: ${insErr.message}`;
     }
-    await supabase
-      .from('assignments')
-      .upsert({ fixture_id: fixtureId, role, umpire_id: umpireId }, { onConflict: 'fixture_id,role' });
+    return null;
   }
 
   return (
