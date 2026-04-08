@@ -56,13 +56,13 @@ function FixtureModal({ fixture, umpires, onClose, onSaved }) {
     };
 
     let fixtureId = fixture?.id;
-    console.log('Saving fixture payload:', payload);
+    console.log('Saving fixture payload:', JSON.stringify(payload));
     if (isNew) {
-      const { data, error } = await supabase.from('fixtures').insert(payload).select().single();
+      const { data, error } = await supabase.from('fixtures').insert(payload).select('id').single();
       if (error) { console.error('Insert error:', error); setError(error.message); setSaving(false); return; }
       fixtureId = data.id;
     } else {
-      const { data, error } = await supabase.from('fixtures').update(payload).eq('id', fixtureId).select().single();
+      const { error } = await supabase.from('fixtures').update(payload).eq('id', fixtureId);
       if (error) { console.error('Update error:', error); setError(error.message); setSaving(false); return; }
     }
 
