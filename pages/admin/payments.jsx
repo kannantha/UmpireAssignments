@@ -164,13 +164,29 @@ export default function Payments() {
     setLoading(true);
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: fixtures } = await supabase
-      .from('fixtures')
-      .select('*, payments(*), assignments!fixture_id(role, umpires(name))')
-      .gte('date', today)
-      .order('date', { ascending: true });
+    const [{ data: fixtures }, { data: payments }, { data: asgn }, { data: umpires }] =
+      await Promise.all([
+        supabase.from('fixtures').select('*').gte('date', today).order('date', { ascending: true }),
+        supabase.from('payments').select('*'),
+        supabase.from('assignments').select('fixture_id, role, umpire_id'),
+        supabase.from('umpires').select('id, name'),
+      ]);
 
-    setRows(fixtures ?? []);
+    const umpireMap = Object.fromEntries((umpires ?? []).map(u => [u.id, u]));
+    const payMap = Object.fromEntries((payments ?? []).map(p => [p.fixture_id, p]));
+    const assignMap = {};
+    for (const a of (asgn ?? [])) {
+      if (!assignMap[a.fixture_id]) assignMap[a.fixture_id] = [];
+      assignMap[a.fixture_id].push({ ...a, umpires: umpireMap[a.umpire_id] });
+    }
+
+    const enriched = (fixtures ?? []).map(f => ({
+      ...f,
+      payments: payMap[f.id] ? [payMap[f.id]] : [],
+      assignments: assignMap[f.id] ?? [],
+    }));
+
+    setRows(enriched);
     setLoading(false);
   }, []);
 

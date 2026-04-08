@@ -179,16 +179,20 @@ export default function Fixtures() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [{ data: fx }, { data: um }] = await Promise.all([
-      supabase
-        .from('fixtures')
-        .select('*, assignments!fixture_id(role, umpires(id,name))')
-        .order('date', { ascending: true })
-        .order('time', { ascending: true }),
-      supabase.from('umpires').select('id, name').eq('active', true).order('name'),
+    const [{ data: fx }, { data: allUmpires }, { data: asgn }] = await Promise.all([
+      supabase.from('fixtures').select('*').order('date', { ascending: true }).order('time', { ascending: true }),
+      supabase.from('umpires').select('id, name').order('name'),
+      supabase.from('assignments').select('fixture_id, role, umpire_id'),
     ]);
-    setFixtures(fx ?? []);
-    setUmpires(um ?? []);
+    const umpireMap = Object.fromEntries((allUmpires ?? []).map(u => [u.id, u]));
+    const assignMap = {};
+    for (const a of (asgn ?? [])) {
+      if (!assignMap[a.fixture_id]) assignMap[a.fixture_id] = [];
+      assignMap[a.fixture_id].push({ ...a, umpires: umpireMap[a.umpire_id] });
+    }
+    const enriched = (fx ?? []).map(f => ({ ...f, assignments: assignMap[f.id] ?? [] }));
+    setFixtures(enriched);
+    setUmpires((allUmpires ?? []).filter(u => u.active !== false));
     setLoading(false);
   }, []);
 

@@ -14,31 +14,33 @@ export default function PublicLanding() {
   async function loadFixtures() {
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: fixtures, error } = await supabase
-      .from('fixtures')
-      .select(`
-        *,
-        assignments!fixture_id (
-          role,
-          umpires ( id, name )
-        )
-      `)
-      .gte('date', today)
-      .order('date', { ascending: true })
-      .order('time', { ascending: true });
+    const [{ data: fixtures, error }, { data: assignments }, { data: umpires }] =
+      await Promise.all([
+        supabase.from('fixtures').select('*').gte('date', today)
+          .order('date', { ascending: true }).order('time', { ascending: true }),
+        supabase.from('assignments').select('fixture_id, role, umpire_id'),
+        supabase.from('umpires').select('id, name'),
+      ]);
 
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
+    if (error) { console.error(error); setLoading(false); return; }
+
+    // Build lookup maps
+    const umpireMap = Object.fromEntries((umpires ?? []).map(u => [u.id, u]));
+    const assignMap = {};
+    for (const a of (assignments ?? [])) {
+      if (!assignMap[a.fixture_id]) assignMap[a.fixture_id] = [];
+      assignMap[a.fixture_id].push({ ...a, umpires: umpireMap[a.umpire_id] });
     }
 
-    // Group by date
+    const enriched = (fixtures ?? []).map(f => ({
+      ...f,
+      assignments: assignMap[f.id] ?? [],
+    }));
+
     const grouped = {};
-    for (const f of fixtures) {
-      const d = f.date;
-      if (!grouped[d]) grouped[d] = [];
-      grouped[d].push(f);
+    for (const f of enriched) {
+      if (!grouped[f.date]) grouped[f.date] = [];
+      grouped[f.date].push(f);
     }
     setFixturesByDate(Object.entries(grouped));
     setLoading(false);
