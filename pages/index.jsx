@@ -18,7 +18,7 @@ export default function PublicLanding() {
       .from('fixtures')
       .select(`
         *,
-        assignments (
+        assignments!fixture_id (
           role,
           umpires ( id, name )
         )

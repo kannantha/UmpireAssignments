@@ -166,7 +166,7 @@ export default function Payments() {
 
     const { data: fixtures } = await supabase
       .from('fixtures')
-      .select('*, payments(*), assignments(role, umpires(name))')
+      .select('*, payments(*), assignments!fixture_id(role, umpires(name))')
       .gte('date', today)
       .order('date', { ascending: true });
 

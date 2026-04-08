@@ -182,7 +182,7 @@ export default function Fixtures() {
     const [{ data: fx }, { data: um }] = await Promise.all([
       supabase
         .from('fixtures')
-        .select('*, assignments(role, umpires(id,name))')
+        .select('*, assignments!fixture_id(role, umpires(id,name))')
         .order('date', { ascending: true })
         .order('time', { ascending: true }),
       supabase.from('umpires').select('id, name').eq('active', true).order('name'),
