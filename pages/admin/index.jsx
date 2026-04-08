@@ -40,9 +40,10 @@ function FixtureModal({ fixture, umpires, onClose, onSaved }) {
     setSaving(true);
     setError('');
 
-    // Build external_id
+    // Build external_id — strip out joined fields (assignments, payments) before sending to Supabase
     const eid = `${form.date}-${form.team1.replace(/\s+/g,'-')}-${form.team2.replace(/\s+/g,'-')}`;
-    const payload = { ...form, external_id: eid };
+    const { assignments: _a, payments: _p, ...formFields } = form;
+    const payload = { ...formFields, external_id: eid };
 
     let fixtureId = fixture?.id;
     if (isNew) {
