@@ -40,19 +40,30 @@ function FixtureModal({ fixture, umpires, onClose, onSaved }) {
     setSaving(true);
     setError('');
 
-    // Build external_id — strip out joined fields (assignments, payments) before sending to Supabase
+    // Explicitly pick only fixture table columns — never send joined data back to Supabase
     const eid = `${form.date}-${form.team1.replace(/\s+/g,'-')}-${form.team2.replace(/\s+/g,'-')}`;
-    const { assignments: _a, payments: _p, ...formFields } = form;
-    const payload = { ...formFields, external_id: eid };
+    const payload = {
+      match_number: form.match_number || null,
+      date:         form.date,
+      time:         form.time || null,
+      ground:       form.ground || null,
+      series_name:  form.series_name || null,
+      division:     form.division || null,
+      match_type:   form.match_type || null,
+      team1:        form.team1,
+      team2:        form.team2,
+      external_id:  eid,
+    };
 
     let fixtureId = fixture?.id;
+    console.log('Saving fixture payload:', payload);
     if (isNew) {
       const { data, error } = await supabase.from('fixtures').insert(payload).select().single();
-      if (error) { setError(error.message); setSaving(false); return; }
+      if (error) { console.error('Insert error:', error); setError(error.message); setSaving(false); return; }
       fixtureId = data.id;
     } else {
-      const { error } = await supabase.from('fixtures').update(payload).eq('id', fixtureId);
-      if (error) { setError(error.message); setSaving(false); return; }
+      const { data, error } = await supabase.from('fixtures').update(payload).eq('id', fixtureId).select().single();
+      if (error) { console.error('Update error:', error); setError(error.message); setSaving(false); return; }
     }
 
     // Save umpire assignments
